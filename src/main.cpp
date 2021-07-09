@@ -4,10 +4,8 @@
 #include <IRUtils.h>
 #include <IRsend.h>
 #include <ir_Gree.h>
-#include <ESP8266WiFi.h>
-#include <WiFiClient.h>
 #include <ESP8266WebServer.h>
-#include <WiFiManager.h>
+#include <ESP8266WiFi.h>
 
 // Config
 // Params sent to AC
@@ -22,6 +20,7 @@
 #define IR_PIN D2
 
 // SSID and Password
+// @todo use captive portal
 const char* ssid = "GreeAP";
 const char* password = "GreeAP123";
 
@@ -42,43 +41,19 @@ void state_check()
   uint8_t options = 1;
   for (uint8_t j = 5; j < CMD_PARAMS; j++)
   {
-    if (state[j] < 0 || state[j] > 1)
+    if (state[j] < 0 || state[j] > 1) 
     {
       options = 0;
       break;
     }
   }
 
-  uint8_t temp = 1;
-  if (state[1] < 16 || state[1] > 31)
-  {
-    temp = 0;
-  }
-
-  uint8_t flap_flag_auto = 1;
-  if (state[3] < 0 || state[3] > 1)
-  {
-    flap_flag_auto = 0;
-  }
-
-  uint8_t flap = 1;
-  if (state[4] < 1 || state[4] > 11)
-  {
-    flap = 0;
-  }
-
-  uint8_t fan = 1;
-  if (state[2] < 0 || state[2] > 3)
-  {
-    fan = 0;
-  }
-
-  uint8_t mode = 1;
-  if (state[0] < 0 || state[0] > 4)
-  {
-    mode = 0;
-  }
-
+  uint8_t temp = (state[1] < 16 || state[1] > 31) ? 0 : 1;
+  uint8_t flap_flag_auto = (state[3] < 0 || state[3] > 1) ? 0 : 1;
+  uint8_t flap = (state[4] < 1 || state[4] > 11) ? 0 : 1;
+  uint8_t fan = (state[2] < 0 || state[2] > 3) ? 0 : 1;
+  uint8_t mode = (state[0] < 0 || state[0] > 4) ? 0 : 1;
+  
   if (!(mode && temp && options && flap_flag_auto && fan && flap))
   {
     Serial.println("Incorrect values stored in state[], resetting to default.");
@@ -100,20 +75,8 @@ void state_check()
 // Handle invalid URLs
 void handleNotFound()
 {
-  String message = "File Not Found\n\n";
-  message += "URI: ";
-  message += server.uri();
-  message += "\nMethod: ";
-  message += (server.method() == HTTP_GET) ? "GET" : "POST";
-  message += "\nArguments: ";
-  message += server.args();
-  message += "\n";
-
-  for (uint8_t i = 0; i < server.args(); i++)
-  {
-    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
-  }
-
+  String message = "error";
+  
   if (server.method() == HTTP_OPTIONS)
     {
         server.sendHeader("Access-Control-Allow-Origin", "*");
@@ -121,27 +84,20 @@ void handleNotFound()
         server.sendHeader("Access-Control-Allow-Methods", "PUT,POST,GET,OPTIONS");
         server.sendHeader("Access-Control-Allow-Headers", "*");
         server.send(204);
-    }
-    else
-    {
+    } else {
         server.send(404, "text/plain", message);
     }
 }
 
-// AC WebGUI (see remote_ac.html)
-void handleAC()
+// Get current state
+void getAcRemote()
 {
   String string_state = "[";
   for (int i = 0; i < CMD_PARAMS; i++)
   {
     char *current = (char *)malloc(sizeof(char) * 4);
     snprintf(current, sizeof(char) * 3, "%d", state[i]);
-    // Serial.print("Current i");
-    // Serial.print(i);
-    // Serial.print(" val: ");
-    // Serial.print(current);
-    // Serial.print(" state orig: ");
-    // Serial.println(state[i]);
+    
     string_state += current;
     if (i < 9)
     {
@@ -157,11 +113,9 @@ void handleAC()
   server.send(200, "text/html", string_state);
 }
 
-// HTTP POST that gets command from WebUI and sends it to IR
+// Set state
 void postAcRemote()
 { 
-  server.sendHeader("Access-Control-Allow-Origin", "*");
-
   String command = server.arg("command");
   char tochar[command.length() + 1];
   command.toCharArray(tochar, command.length() + 1);
@@ -190,20 +144,19 @@ void postAcRemote()
     ac.setTurbo(command_received[6]);
     ac.setXFan(command_received[7]);
     ac.setSleep(command_received[8]);
-  }
-  ac.setPower(command_received[9]);
 
-  // Save params if we are not turning off..
-  if (command_received[9] == 1)
-  {
+    // Save params if we are not turning off
     for (int h = 0; h < CMD_PARAMS - 1; h++)
     {
       state[h] = command_received[h];
     }
   }
+  ac.setPower(command_received[9]);
 
   // And save also in state if last command was a command or Off
   state[9] = command_received[9];
+  
+  // Send signal to AC
   int send_cmd_repeat = 0;
   while (send_cmd_repeat < CMD_REPEAT)
   {
@@ -212,9 +165,11 @@ void postAcRemote()
     send_cmd_repeat++;
   }
 
+  // Save to memory
   EEPROM.put(0, state);
   EEPROM.commit();
 
+  server.sendHeader("Access-Control-Allow-Origin", "*");
   server.send(200, "text/plain", "success");
 }
 
@@ -223,19 +178,20 @@ void setup()
   Serial.begin(115200);
 
   // Connect to wifi
-  WiFiManager wifiManager;
-  
-  delay(1000);
-  wifiManager.autoConnect(ssid);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) 
+  {
+    delay(500);
+    Serial.print("*");
+  }
 
   // EEPROM for state[]
   EEPROM.begin(CMD_PARAMS * sizeof(uint8_t));
   EEPROM.get(0, state);
   state_check();
 
+  // IR set last known state
   ac.begin();
-
-  // IR send last known state
   ac.setMode(state[0]);
   ac.setTemp(state[1]);
   ac.setFan(state[2]);
@@ -247,7 +203,7 @@ void setup()
   ac.setPower(state[9]);
 
   // Server
-  server.on("/get-ac", handleAC);
+  server.on("/get-ac", HTTP_GET, getAcRemote);
   server.on("/post-ac", HTTP_POST, postAcRemote);
   server.onNotFound(handleNotFound);
   server.begin();

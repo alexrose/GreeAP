@@ -51,7 +51,8 @@ code {
   opacity: 0.75;
 }
 .loader svg {
-  position: relative;
-  left: 48%;
-  top:35%;
+  position: absolute;
+  left: 50%;
+  top: 35%;
+  transform: translate(-50%, -50%);
 }
