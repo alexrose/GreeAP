@@ -10,6 +10,8 @@ export const SET_PARAMS_ON = 'SET_PARAMS_ON';
 export const SET_PARAMS_OFF = 'SET_PARAMS_OFF';
 export const UPDATE_PARAMS = 'UPDATE_PARAMS';
 
+export const HANDLE_REQUEST = 'HANDLE_REQUEST';
+
 // inputs
 export const AC_MODE = [
     {value: 0, label: 'Auto'},

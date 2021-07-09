@@ -40,3 +40,18 @@ code {
 .input-range .input-range__label--max .input-range__label-container {
   left: 0;
 }
+
+/** Loader */
+.loader {
+  position: fixed;
+  z-index: 9999;
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+  opacity: 0.75;
+}
+.loader svg {
+  position: relative;
+  left: 48%;
+  top:35%;
+}

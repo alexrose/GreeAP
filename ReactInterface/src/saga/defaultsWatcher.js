@@ -1,5 +1,5 @@
 import axios from 'axios';
-import {updateDefaults} from '../actions/actionCreators'
+import {startRequest, stopRequest, updateDefaults} from '../actions/actionCreators'
 import {takeLatest, call, put} from 'redux-saga/effects';
 import {defaultsUrl, GET_DEFAULTS} from "../constants";
 
@@ -14,10 +14,14 @@ function getDefaultsRequest() {
 /** Saga worker responsible for the side effects */
 function* loginEffectSaga(payload) {
     try {
-        let {data} = yield call(getDefaultsRequest);
-        yield put(updateDefaults(data));
+        yield put(startRequest());
 
+        let {data} = yield call(getDefaultsRequest);
+
+        yield put(updateDefaults(data));
+        yield put(stopRequest());
     } catch (e) {
+        yield put(stopRequest());
         console.log('[Critical]', e);
     }
 }

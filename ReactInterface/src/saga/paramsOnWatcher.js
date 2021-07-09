@@ -1,27 +1,26 @@
 import axios from 'axios';
-import {updateParams} from '../actions/actionCreators'
+import {startRequest, stopRequest, updateParams} from '../actions/actionCreators'
 import {takeLatest, call, put} from 'redux-saga/effects';
 import {SET_PARAMS_ON, updateUrl} from "../constants";
 
 /** Returns an axios call */
 function getParamsRequest(data) {
-    console.log(data);
-    axios.post(updateUrl,
-        `command=${data.mode},${data.temperature},${data.fanSpeed},${data.directionAuto},${data.direction},${data.light},${data.turbo},${data.xFan},${data.sleep},1`
-        , {
-            headers: {
-                'content-type': 'application/x-www-form-urlencoded'
-            }
-        }).then((response) => {
-        put(updateParams({'status': response.data, 'message': 'AC turned on.'}));
+    return axios.request({
+        method: 'post',
+        url: updateUrl,
+        data: `command=${data.mode},${data.temperature},${data.fanSpeed},${data.directionAuto},${data.direction},${data.light},${data.turbo},${data.xFan},${data.sleep},1`
     });
 }
 
 /** Saga worker responsible for the side effects */
 function* loginEffectSaga(payload) {
     try {
-        yield call(getParamsRequest, payload.param);
+        yield put(startRequest());
+        let {data} = yield call(getParamsRequest, payload.param);
+        yield put(stopRequest());
+        put(updateParams({'status': data, 'state': 'on', 'message': 'AC turned on.'}));
     } catch (e) {
+        yield put(stopRequest());
         console.log('[Critical]', e);
     }
 }

@@ -1,7 +1,7 @@
 import React from 'react'
 import InputRange from 'react-input-range';
 import Dropdown from 'react-dropdown';
-import ReduxBlockUi from 'react-block-ui/redux';
+import Loader from 'react-loader-spinner';
 
 import {connect} from 'react-redux';
 import {ToastContainer} from 'react-toastify';
@@ -12,9 +12,9 @@ import {getDefaults, setParamsOn, setParamsOff} from "../actions/actionCreators"
 import {AC_DIRECTION, AC_FAN_SPEED, AC_MODE} from "../constants";
 
 import 'react-dropdown/style.css';
-import 'react-block-ui/style.css';
 import 'react-toastify/dist/ReactToastify.css';
 import 'react-input-range/lib/css/index.css';
+import 'react-loader-spinner/dist/loader/css/react-spinner-loader.css';
 
 class Dashboard extends React.Component {
     constructor(props) {
@@ -39,25 +39,31 @@ class Dashboard extends React.Component {
     }
 
     componentDidUpdate(prevProps, prevState, snapshot) {
-        if (!prevState.initialized) {
-            let {defaults} = this.props.defaults;
+        let {defaults} = this.props.defaults;
 
-            this.setState({initialized: true});
-            this.setState({temperature: defaults[1]});
-            this.setState({mode: defaults[0]});
-            this.setState({fanSpeed: defaults[2]});
-            this.setState({direction: defaults[4]});
-            this.setState({directionAuto: defaults[3]});
-            this.setState({light: defaults[5]});
-            this.setState({turbo: defaults[6]});
-            this.setState({xFan: defaults[7]});
-            this.setState({sleep: defaults[8]});
+        if (!prevState.initialized && defaults.length > 0) {
+            this.setState({
+                ...this.state,
+                initialized: true,
+                temperature: defaults[1],
+                mode: defaults[0],
+                fanSpeed: defaults[2],
+                direction: defaults[4],
+                directionAuto: defaults[3],
+                light: defaults[5],
+                turbo: defaults[6],
+                xFan: defaults[7],
+                sleep: defaults[8]
+            });
         }
     }
 
     _onDirectionChange(data) {
-        this.setState({direction: data.value});
-        this.setState({directionAuto: (data.value > 6 || data.value === 1) ? 1 : 0});
+        this.setState({
+            ...this.state,
+            direction: data.value,
+            directionAuto: (data.value > 6 || data.value === 1) ? 1 : 0
+        });
     }
 
     _sendCommand() {
@@ -71,18 +77,20 @@ class Dashboard extends React.Component {
 
     render() {
         let {defaults} = this.props.defaults;
+        let {counterRequest} = this.props.counterRequest;
 
         return (
             <Container fluid className='p-0'>
-                <ReduxBlockUi block="REQUEST_START" unblock="REQUEST_SUCCESS">
-                    <Navbar bg='dark' variant='dark'>
-                        <Navbar.Brand href='#'>
-                            <img alt='' width='48' height='48' src='assets/android-chrome-192x192.png'/>
-                            {' Gree Remote Control '}
-                        </Navbar.Brand>
-                    </Navbar>
+                <Loader className={"loader"} type="Bars" color="#00BFFF" visible={counterRequest > 0}/>
 
-                    <Container fluid>
+                <Navbar bg='dark' variant='dark'>
+                    <Navbar.Brand href='#'>
+                        <img alt='' width='48' height='48' src='assets/android-chrome-192x192.png'/>
+                        {' Gree Remote Control '}
+                    </Navbar.Brand>
+                </Navbar>
+
+                <Container fluid>
                     <p>&nbsp;</p>
                     <form name={'greeData'}>
                         <Row>
@@ -142,7 +150,8 @@ class Dashboard extends React.Component {
                                         <Col sm>
                                             <label>Options</label>
                                             <Alert variant='secondary'>
-                                                <ToggleButtonGroup type="checkbox" defaultValue={1}  className={'mr-1 mb-1'}>
+                                                <ToggleButtonGroup type="checkbox" defaultValue={1}
+                                                                   className={'mr-1 mb-1'}>
                                                     <ToggleButton
                                                         variant={"outline-secondary"}
                                                         size="sm"
@@ -151,7 +160,8 @@ class Dashboard extends React.Component {
                                                         Light
                                                     </ToggleButton>
                                                 </ToggleButtonGroup>
-                                                <ToggleButtonGroup type="checkbox" defaultValue={1} className={'mr-1 mb-1'}>
+                                                <ToggleButtonGroup type="checkbox" defaultValue={1}
+                                                                   className={'mr-1 mb-1'}>
                                                     <ToggleButton
                                                         type={"checkbox"}
                                                         variant={"outline-secondary"}
@@ -161,7 +171,8 @@ class Dashboard extends React.Component {
                                                         Turbo
                                                     </ToggleButton>
                                                 </ToggleButtonGroup>
-                                                <ToggleButtonGroup type="checkbox" defaultValue={1} className={'mr-1 mb-1'}>
+                                                <ToggleButtonGroup type="checkbox" defaultValue={1}
+                                                                   className={'mr-1 mb-1'}>
                                                     <ToggleButton
                                                         type={"checkbox"}
                                                         variant={"outline-secondary"}
@@ -200,7 +211,7 @@ class Dashboard extends React.Component {
 
                     </form>
                 </Container>
-                </ReduxBlockUi>
+
                 <ToastContainer autoClose={2000}/>
             </Container>
         )
@@ -209,7 +220,8 @@ class Dashboard extends React.Component {
 
 const mapStateToProps = (state) => {
     return {
-        defaults: state.defaultsData
+        defaults: state.defaultsData,
+        counterRequest: state.handleRequestData
     }
 }
 
